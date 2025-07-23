@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Crypto Volatility Race</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: sans-serif;
+      padding: 40px;
+    }
+    .bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      height: 30px;
+      transition: all 0.5s ease;
+    }
+    .label {
+      width: 100px;
+      margin-right: 10px;
+    }
+    .value {
+      margin-left: 10px;
+      font-size: 14px;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    .green {
+      background-color: #00ff88;
+    }
+    .red {
+      background-color: #ff3366;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔥 15분간 변동성 기준 TOP 30 코인</h2>
+  <div id="chart"></div>
+
+  <script>
+    const API_URL = "https://binance-flask-app-production.up.railway.app/top_volatility";
+
+    async function fetchData() {
+      const res = await fetch(API_URL);
+      return await res.json();
+    }
+
+    async function updateChart() {
+      const data = await fetchData();
+      const container = d3.select("#chart");
+      container.selectAll("*").remove();
+
+      const maxVol = d3.max(data, d => d.volatility);
+
+      const bars = container.selectAll(".bar")
+        .data(data, d => d.symbol)
+        .enter()
+        .append("div")
+        .attr("class", "bar");
+
+      bars.append("div")
+        .attr("class", "label")
+        .text(d => d.symbol);
+
+      bars.append("div")
+        .attr("class", d => `bar-fill ${d.color}`)
+        .style("width", d => `${(d.volatility / maxVol) * 60}%`);
+
+      bars.append("div")
+        .attr("class", "value")
+        .text(d => `${d.volatility.toFixed(2)}%`);
+    }
+
+    updateChart();
+    setInterval(updateChart, 60_000);  // 1분마다 자동 갱신
+  </script>
+</body>
+</html>
