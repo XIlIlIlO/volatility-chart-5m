@@ -2,83 +2,206 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Crypto Volatility Race</title>
+  <title>Crypto Volatility Race (5분 기준)</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
       background-color: black;
       color: white;
       font-family: sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    body {
+      transform: scale(0.75);
+      transform-origin: top left;
+      width: 133.33%;
+      height: 133.33%;
       padding: 40px;
     }
-    .bar {
-      display: flex;
-      align-items: center;
-      margin-bottom: 8px;
-      height: 30px;
-      transition: all 0.5s ease;
+
+    h2 {
+      margin-bottom: 10px;
     }
-    .label {
-      width: 100px;
-      margin-right: 10px;
+
+    #time {
+      margin-bottom: 20px;
+      font-size: 16px;
+      color: #cccccc;
     }
-    .value {
-      margin-left: 10px;
-      font-size: 14px;
-    }
-    .bar-fill {
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.5s ease;
-    }
-    .green {
-      background-color: #00ff88;
-    }
-    .red {
-      background-color: #ff3366;
+
+    #countdown {
+      margin-left: 20px;
+      color: #888;
     }
   </style>
 </head>
 <body>
-  <h2>🔥 15분간 변동성 기준 TOP 30 코인</h2>
-  <div id="chart"></div>
+  <h1 style="font-size: 26px; font-weight: bold;">■ SUPERHERO 실시간 '상승' '하락' 변동성 최고 영웅 코인들 ■ (5M)</h1>
+
+  <div id="time">
+    UTC 시간 로딩 중... <span id="countdown">다음 갱신까지 60s</span>
+  </div>
+  <svg id="chart" width="1000" height="1200"></svg>
 
   <script>
-    const API_URL = "https://binance-flask-app-production.up.railway.app/top_volatility";
+    const API_URL = "https://binance-flask-app-production.up.railway.app/top_volatility_5m";
+    const barHeight = 30;
+    const barGap = 10;
+    const barMaxWidth = 600;
+    const svg = d3.select("#chart");
+    let previousDataMap = new Map();
+    let secondsToNextUpdate = 60;
+
+    function updateTimeLabel() {
+      const now = new Date();
+      const utcYear = now.getUTCFullYear();
+      const utcMonth = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const utcDate = String(now.getUTCDate()).padStart(2, '0');
+      const utcHour = String(now.getUTCHours()).padStart(2, '0');
+      const utcMin = String(now.getUTCMinutes()).padStart(2, '0');
+      const timeStr = `${utcYear}-${utcMonth}-${utcDate} ${utcHour}:${utcMin} UTC`;
+      document.getElementById("time").childNodes[0].textContent = timeStr;
+    }
+
+    function startCountdown() {
+      setInterval(() => {
+        secondsToNextUpdate--;
+        if (secondsToNextUpdate <= 0) {
+          secondsToNextUpdate = 60;
+        }
+        document.getElementById("countdown").textContent = `다음 갱신까지 ${secondsToNextUpdate}s`;
+      }, 1000);
+    }
 
     async function fetchData() {
       const res = await fetch(API_URL);
       return await res.json();
     }
 
+    function getColorHex(colorName) {
+      return colorName === "green" ? "#00ff88" : "#ff3366";
+    }
+
     async function updateChart() {
+      updateTimeLabel();
+      secondsToNextUpdate = 60; // 리셋
+
       const data = await fetchData();
-      const container = d3.select("#chart");
-      container.selectAll("*").remove();
-
       const maxVol = d3.max(data, d => d.volatility);
+      const dataMap = new Map(data.map(d => [d.symbol, d]));
 
-      const bars = container.selectAll(".bar")
-        .data(data, d => d.symbol)
-        .enter()
-        .append("div")
-        .attr("class", "bar");
+      const group = svg.selectAll("g")
+        .data(data, d => d.symbol);
 
-      bars.append("div")
+      const groupEnter = group.enter()
+        .append("g")
+        .attr("transform", (d, i) => `translate(50, ${i * (barHeight + barGap)})`);
+
+      groupEnter.append("text")
+        .attr("class", "rank-change")
+        .attr("x", 0)
+        .attr("y", barHeight / 2)
+        .attr("dy", ".35em")
+        .attr("text-anchor", "start")
+        .style("font-size", "14px")
+        .style("opacity", 0)
+        .attr("fill", "white");
+
+      groupEnter.append("text")
         .attr("class", "label")
-        .text(d => d.symbol);
+        .attr("x", 50)
+        .attr("y", barHeight / 2)
+        .attr("dy", ".35em")
+        .attr("text-anchor", "start")
+        .attr("fill", "white")
+        .style("font-weight", "bold")
+        .style("opacity", 0);
 
-      bars.append("div")
-        .attr("class", d => `bar-fill ${d.color}`)
-        .style("width", d => `${(d.volatility / maxVol) * 60}%`);
+      groupEnter.append("rect")
+        .attr("class", "bar")
+        .attr("x", 200)
+        .attr("y", 0)
+        .attr("height", barHeight)
+        .attr("fill", "#00ff88");
 
-      bars.append("div")
+      groupEnter.append("text")
         .attr("class", "value")
-        .text(d => `${d.volatility.toFixed(2)}%`);
+        .attr("x", 210)
+        .attr("y", barHeight / 2)
+        .attr("dy", ".35em")
+        .attr("fill", "white")
+        .style("opacity", 0);
+
+      const merged = groupEnter.merge(group);
+
+      merged.transition().duration(1000)
+        .attr("transform", (d, i) => `translate(50, ${i * (barHeight + barGap)})`);
+
+      merged.each(function(d, i) {
+        const g = d3.select(this);
+        const safeVol = Math.max(0, d.volatility);
+        const safeWidth = Math.max(0, (safeVol / maxVol) * barMaxWidth);
+
+        g.select("rect")
+          .transition().duration(1000)
+          .attr("width", safeWidth)
+          .attr("fill", getColorHex(d.color));
+
+        g.select("text.label")
+          .text(" " + d.symbol)
+          .transition().duration(1000)
+          .style("opacity", 1);
+
+        g.select("text.value")
+          .transition().duration(1000)
+          .style("opacity", 1)
+          .tween("text", function() {
+            const prev = previousDataMap.get(d.symbol);
+            const start = prev ? prev.volatility : 0;
+            const i = d3.interpolateNumber(start, d.volatility);
+            return function(t) {
+              this.textContent = `${i(t).toFixed(2)}%`;
+            };
+          })
+          .attr("x", 200 + safeWidth + 10)     // 바깥쪽으로 고정
+          .attr("text-anchor", "start");       // 왼쪽 정렬
+
+        const prev = previousDataMap.get(d.symbol);
+        const rankText = g.select("text.rank-change");
+
+        if (!prev) {
+          rankText.text("NEW").attr("fill", "white");
+        } else {
+          const diff = prev.rank - i;
+          if (diff === 0) {
+            rankText.text("=").attr("fill", "#cccccc");
+          } else {
+            const arrow = diff > 0 ? "▲" : "▼";
+            const color = diff > 0 ? "#00ff88" : "#ff3366";
+            rankText.text(`${arrow}${Math.abs(diff)}`).attr("fill", color);
+          }
+        }
+
+        rankText.transition().duration(1000).style("opacity", 1);
+      });
+
+      group.exit().remove();
+
+      previousDataMap.clear();
+      data.forEach((d, i) => {
+        previousDataMap.set(d.symbol, { ...d, rank: i });
+      });
     }
 
     updateChart();
-    setInterval(updateChart, 60_000);  // 1분마다 자동 갱신
+    setInterval(updateChart, 60 * 1000);
+    startCountdown();
   </script>
 </body>
 </html>
+
