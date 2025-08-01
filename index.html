@@ -89,7 +89,7 @@
 
     async function updateChart() {
       updateTimeLabel();
-      secondsToNextUpdate = 60; // 리셋
+      secondsToNextUpdate = 60;
 
       const data = await fetchData();
       const maxVol = d3.max(data, d => d.volatility);
@@ -120,7 +120,12 @@
         .attr("text-anchor", "start")
         .attr("fill", "white")
         .style("font-weight", "bold")
-        .style("opacity", 0);
+        .style("cursor", "pointer")
+        .style("opacity", 0)
+        .on("click", function (event, d) {
+          const url = `https://www.binance.com/en/futures/${d.symbol}`;
+          window.open(url, "_blank");
+        });
 
       groupEnter.append("rect")
         .attr("class", "bar")
@@ -168,8 +173,8 @@
               this.textContent = `${i(t).toFixed(2)}%`;
             };
           })
-          .attr("x", 200 + safeWidth + 10)     // 바깥쪽으로 고정
-          .attr("text-anchor", "start");       // 왼쪽 정렬
+          .attr("x", 200 + safeWidth + 10)
+          .attr("text-anchor", "start");
 
         const prev = previousDataMap.get(d.symbol);
         const rankText = g.select("text.rank-change");
@@ -204,4 +209,5 @@
   </script>
 </body>
 </html>
+
 
