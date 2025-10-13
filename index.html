@@ -5,23 +5,26 @@
   <title>Crypto Volatility Race (5분 기준)</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background-color: black;
-      color: white;
-      font-family: sans-serif;
-      overflow: hidden;
-      width: 100vw;
-      height: 100vh;
-    }
-    body {
-      transform: scale(0.68);
-      transform-origin: top left;
-      width: 133.33%;
-      height: 133.33%;
-      padding: 40px;
-    }
+    :root { --scale: 0.65; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: black;
+    color: white;
+    font-family: sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+  body {
+    transform: scale(var(--scale));
+    transform-origin: top left;
+    /* 역보정: 100% / 0.68 = 147.058823...% */
+    width: calc(100% / var(--scale));
+    height: calc(100% / var(--scale));
+    padding: calc(40px / var(--scale)); /* 시각적 패딩 유지 */
+  }
     h2 { margin-bottom: 10px; }
     #time { margin-bottom: 20px; font-size: 16px; color: #cccccc; }
     #countdown { margin-left: 20px; color: #888; }
@@ -44,12 +47,12 @@
     const volBarY     = 0;
     const volLabelY   = barHeight / 2;
     const volBarStart = 200;
-    const volBarMaxW  = 600;
+    const volBarMaxW  = 520;
 
     // 거래대금 보조 막대
     const vol2BarHeight = 8;
     const vol2BarY      = barHeight + 6;
-    const turnBarMaxW   = 550;  // 요청사항
+    const turnBarMaxW   = 500;  // 요청사항
 
     const svg = d3.select("#chart");
     let previousDataMap = new Map();
@@ -261,6 +264,7 @@
   </script>
 </body>
 </html>
+
 
 
 
